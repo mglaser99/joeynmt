@@ -5,6 +5,7 @@
 **TransformerEncoder() class**:
 - Changes in __init__() to access the hyperparameters from the config file
 - Changing the forward() for LayerDrop and pruning
+- implemented a logger to keep track of which layers get dropped / pruned
 
 ### model.py:
 - Changing the build_model() function to take the whole specifications of the config file as a parameter and adapting the function body accordingly
