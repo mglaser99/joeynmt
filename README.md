@@ -1,3 +1,18 @@
+# MT Exercise 4
+
+## Changes
+### encoders.py
+**TransformerEncoder() class**:
+- Changes in __init__() to access the hyperparameters from the config file
+- Changing the forward() for LayerDrop and pruning
+
+### model.py:
+- Changing the build_model() function to take the whole specifications of the config file as a parameter and adapting the function body accordingly
+- adding the testing specifications of the configuration as parameters to the TransformerEncoder() call
+
+### predition.py & training.py
+- changing the build_model() function calls
+
 # &nbsp; ![Joey-NMT](joey-small.png) Joey NMT
 [![Build Status](https://travis-ci.com/joeynmt/joeynmt.svg?branch=master)](https://travis-ci.org/joeynmt/joeynmt)
 [![Gitter](https://badges.gitter.im/joeynmt/community.svg)](https://gitter.im/joeynmt/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
