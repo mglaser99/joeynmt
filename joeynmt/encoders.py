@@ -5,10 +5,15 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from joeynmt.helpers import freeze_params
+from joeynmt.helpers import freeze_params, load_config
 from joeynmt.transformer_layers import \
     TransformerEncoderLayer, PositionalEncoding
 
+import random
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 #pylint: disable=abstract-method
 class Encoder(nn.Module):
@@ -189,6 +194,11 @@ class TransformerEncoder(Encoder):
 
         self._output_size = hidden_size
 
+        self.layerdrop = kwargs.get("layerdrop", 0.)
+        self.active_layers = kwargs.get("active_layers", [0,1,2,3])
+        
+        # print(self.layerdrop, kwargs)
+
         if freeze:
             freeze_params(self)
 
@@ -218,8 +228,35 @@ class TransformerEncoder(Encoder):
         x = self.pe(embed_src)  # add position encoding to word embeddings
         x = self.emb_dropout(x)
 
-        for layer in self.layers:
-            x = layer(x, mask)
+        i = 0
+
+        # this gets run in training mode
+        if self.training:
+
+            for layer in self.layers:
+                
+                n = random.random()
+                if n <= self.layerdrop:
+                    logger.info(f"Layerdrop: Layer {i} is dropped")
+
+                else:
+                    x = layer(x, mask)
+                    logger.info(f"Layerdrop: Layer {i} is not dropped")
+                i+=1
+
+        # this gets run in inference mode
+        else:
+
+            for layer in self.layers:
+
+                if i in self.active_layers:
+                    logger.info(f"Pruning: Layer {i} is not pruned")
+                    
+                else:
+                    x = layer(x, mask)
+                    logger.info(f"Pruning: Layer {i} is pruned")
+                i+=1
+
         return self.layer_norm(x), None
 
     def __repr__(self):

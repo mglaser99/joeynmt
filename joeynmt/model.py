@@ -207,7 +207,7 @@ def build_model(cfg: dict = None,
     """
     Build and initialize the model according to the configuration.
 
-    :param cfg: dictionary configuration containing model specifications
+    :param cfg: dictionary configuration containing (model) specifications
     :param src_vocab: source vocabulary
     :param trg_vocab: target vocabulary
     :return: built and initialized model
@@ -217,12 +217,12 @@ def build_model(cfg: dict = None,
     trg_padding_idx = trg_vocab.stoi[PAD_TOKEN]
 
     src_embed = Embeddings(
-        **cfg["encoder"]["embeddings"], vocab_size=len(src_vocab),
+        **cfg["model"]["encoder"]["embeddings"], vocab_size=len(src_vocab),
         padding_idx=src_padding_idx)
 
     # this ties source and target embeddings
     # for softmax layer tying, see further below
-    if cfg.get("tied_embeddings", False):
+    if cfg["model"].get("tied_embeddings", False):
         if src_vocab.itos == trg_vocab.itos:
             # share embeddings for src and trg
             trg_embed = src_embed
@@ -231,35 +231,37 @@ def build_model(cfg: dict = None,
                 "Embedding cannot be tied since vocabularies differ.")
     else:
         trg_embed = Embeddings(
-            **cfg["decoder"]["embeddings"], vocab_size=len(trg_vocab),
+            **cfg["model"]["decoder"]["embeddings"], vocab_size=len(trg_vocab),
             padding_idx=trg_padding_idx)
 
     # build encoder
-    enc_dropout = cfg["encoder"].get("dropout", 0.)
-    enc_emb_dropout = cfg["encoder"]["embeddings"].get("dropout", enc_dropout)
-    if cfg["encoder"].get("type", "recurrent") == "transformer":
-        assert cfg["encoder"]["embeddings"]["embedding_dim"] == \
-               cfg["encoder"]["hidden_size"], \
+    enc_dropout = cfg["model"]["encoder"].get("dropout", 0.)
+    enc_emb_dropout = cfg["model"]["encoder"]["embeddings"].get("dropout", enc_dropout)
+    if cfg["model"]["encoder"].get("type", "recurrent") == "transformer":
+        assert cfg["model"]["encoder"]["embeddings"]["embedding_dim"] == \
+               cfg["model"]["encoder"]["hidden_size"], \
                "for transformer, emb_size must be hidden_size"
 
-        encoder = TransformerEncoder(**cfg["encoder"],
+        encoder = TransformerEncoder(**cfg["model"]["encoder"],
+        							**cfg["testing"],
                                      emb_size=src_embed.embedding_dim,
-                                     emb_dropout=enc_emb_dropout)
+                                     emb_dropout=enc_emb_dropout,)
     else:
-        encoder = RecurrentEncoder(**cfg["encoder"],
+        encoder = RecurrentEncoder(**cfg["model"]["encoder"],
+        						   **cfg["testing"],
                                    emb_size=src_embed.embedding_dim,
                                    emb_dropout=enc_emb_dropout)
 
     # build decoder
-    dec_dropout = cfg["decoder"].get("dropout", 0.)
-    dec_emb_dropout = cfg["decoder"]["embeddings"].get("dropout", dec_dropout)
-    if cfg["decoder"].get("type", "recurrent") == "transformer":
+    dec_dropout = cfg["model"]["decoder"].get("dropout", 0.)
+    dec_emb_dropout = cfg["model"]["decoder"]["embeddings"].get("dropout", dec_dropout)
+    if cfg["model"]["decoder"].get("type", "recurrent") == "transformer":
         decoder = TransformerDecoder(
-            **cfg["decoder"], encoder=encoder, vocab_size=len(trg_vocab),
+            **cfg["model"]["decoder"], encoder=encoder, vocab_size=len(trg_vocab),
             emb_size=trg_embed.embedding_dim, emb_dropout=dec_emb_dropout)
     else:
         decoder = RecurrentDecoder(
-            **cfg["decoder"], encoder=encoder, vocab_size=len(trg_vocab),
+            **cfg["model"]["decoder"], encoder=encoder, vocab_size=len(trg_vocab),
             emb_size=trg_embed.embedding_dim, emb_dropout=dec_emb_dropout)
 
     model = Model(encoder=encoder, decoder=decoder,
@@ -267,7 +269,7 @@ def build_model(cfg: dict = None,
                   src_vocab=src_vocab, trg_vocab=trg_vocab)
 
     # tie softmax layer with trg embeddings
-    if cfg.get("tied_softmax", False):
+    if cfg["model"].get("tied_softmax", False):
         if trg_embed.lut.weight.shape == \
                 model.decoder.output_layer.weight.shape:
             # (also) share trg embeddings and softmax layer:
@@ -279,17 +281,17 @@ def build_model(cfg: dict = None,
                 "The decoder must be a Transformer.")
 
     # custom initialization of model parameters
-    initialize_model(model, cfg, src_padding_idx, trg_padding_idx)
+    initialize_model(model, cfg["model"], src_padding_idx, trg_padding_idx)
 
     # initialize embeddings from file
-    pretrained_enc_embed_path = cfg["encoder"]["embeddings"].get(
+    pretrained_enc_embed_path = cfg["model"]["encoder"]["embeddings"].get(
         "load_pretrained", None)
-    pretrained_dec_embed_path = cfg["decoder"]["embeddings"].get(
+    pretrained_dec_embed_path = cfg["model"]["decoder"]["embeddings"].get(
         "load_pretrained", None)
     if pretrained_enc_embed_path:
         logger.info("Loading pretraind src embeddings...")
         model.src_embed.load_from_file(pretrained_enc_embed_path, src_vocab)
-    if pretrained_dec_embed_path and not cfg.get("tied_embeddings", False):
+    if pretrained_dec_embed_path and not cfg["model"].get("tied_embeddings", False):
         logger.info("Loading pretraind trg embeddings...")
         model.trg_embed.load_from_file(pretrained_dec_embed_path, trg_vocab)
 
