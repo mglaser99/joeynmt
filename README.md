@@ -10,7 +10,7 @@
 - Changing the build_model() function to take the whole specifications of the config file as a parameter and adapting the function body accordingly
 - adding the testing specifications of the configuration as parameters to the TransformerEncoder() call
 
-### predition.py & training.py
+### prediction.py & training.py
 - changing the build_model() function calls
 
 # &nbsp; ![Joey-NMT](joey-small.png) Joey NMT
